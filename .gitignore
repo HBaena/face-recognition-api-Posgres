@@ -1,0 +1,12 @@
+fsdk/
+openalpr/
+__pycache__/
+temp/*
+*.pkl
+*.ipynb*
+*.7z
+*.bk*
+*.idea*
+client.py
+license.key
+*.log
