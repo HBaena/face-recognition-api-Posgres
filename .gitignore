@@ -10,3 +10,4 @@ temp/*
 client.py
 license.key
 *.log
+connection.*
