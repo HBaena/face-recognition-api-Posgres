@@ -1,12 +1,12 @@
-import yaml
+import json
 import cx_Oracle
 
 class OraclePoolConnections:
     """docstring for Oracle_connection"""
     def __init__(self, config_filename):
         self.config_filename = config_filename
-        with open("connection.yaml", "r") as file:
-            db_args = yaml.safe_load(file)
+        with open("connection.json", "r") as file:
+            db_args = json.loads(file.read())
             user = db_args.pop("user")
             psw = db_args.pop("psw")
             pool_size = db_args.pop("pool_size")

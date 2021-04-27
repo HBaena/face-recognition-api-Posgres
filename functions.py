@@ -9,7 +9,7 @@ scheme = "D911_PADRONES"
 table_names = dict(
     IPH=f"{scheme}.PADRON_IPH",
     PSP=f"{scheme}.PADRON_SEG_PUBLICA",
-    SP=f"{scheme}.PADRON_SEG_PUBLICA"
+    SP=f"{scheme}.PADRON_SERVIDOR_PUBLICO"
     )
 
 FACIAL_RECOGNITION_TABLE = ''
@@ -227,11 +227,13 @@ def insert_into(cursor, **kwargs):
     return idx.getvalue()[0]
 
 def get_info_by_id(cursor, table_name, id_column, id_):
+    from icecream import ic
     query = """
         SELECT *
         FROM %s
         WHERE %s = :%s
     """ % (table_name, id_column, id_column)
+    ic(query)
     cursor.execute(query, **{id_column: id_})
     col_names = [row[0] for row in cursor.description]
     return {k: v.strftime("%m/%d/%Y, %H:%M:%S") if isinstance(v, datetime) else v for k, v in \

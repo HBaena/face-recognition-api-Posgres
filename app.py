@@ -89,6 +89,13 @@ class MirosCNFaceRecognition(Resource):
             video = request.files.get('video', None)
 
             if image:
+                from re import sub
+                from icecream import ic
+                table_names = dict(
+                    IPH=f"PADRON_IPH",
+                    PSP=f"PADRON_SEG_PUBLICA",
+                    SP=f"PADRON_SERVIDOR_PUBLICO"
+                    )
                 try:
                     image = image.read()
                     img = image_from_jpg(image)  # convert binary image into fsdk image
@@ -100,7 +107,9 @@ class MirosCNFaceRecognition(Resource):
                         if not response['Error']:
                             response['Coincidences'] = list(response['Coincidences'].values())
                             coincidences = response["Coincidences"]
+                            ic(response["Coincidences"])
                             response["Coincidences"] = transforming_response(coincidences, cursor)
+                            response["Status"] = table_names[sub( r'\d','' ,list(response["Coincidences"][0].values())[0])]
                             return response
                         else:
                             return dict(
@@ -206,7 +215,7 @@ class MirosCNFaceRecognition(Resource):
         table_names = dict(
             IPH=f"{scheme}.PADRON_IPH",
             PSP=f"{scheme}.PADRON_SEG_PUBLICA",
-            SP=f"{scheme}.PADRON_SEG_PUBLICA"
+            SP=f"{scheme}.PADRON_SERVIDOR_PUBLICO"
             )
 
         form = dict(request.form)

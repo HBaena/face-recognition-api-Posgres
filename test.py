@@ -1,60 +1,59 @@
-import json
-from pprint import pprint
-from icecream import ic as debug
-from DB import OraclePoolConnections
-from os import getcwd, path
-from cx_Oracle import LOB
-from re import sub
-from datetime import datetime
+# from arlp import ALPR
+# from pprint import pprint
 
+# response = ALPR().get_license_plate(open("../placa-00.jpeg", "rb").read())
+# for item in response:
+#     print(f"Plate, {item['plate']}")
+#     print(f"Score, {item['score']}")
 
-pool = OraclePoolConnections(path.join(getcwd(), "connection.yaml"))
+import sys
+import tqdm
+import time
+import pandas as pd
 
-scheme = "D911_PADRONES" 
-table_names = dict(
-    IPH=f"{scheme}.PADRON_IPH",
-    PSP=f"{scheme}.PADRON_SEG_PUBLICA",
-    SP=f"{scheme}.PADRON_SEG_PUBLICA"
-    )
+B = []
+t = pd.DataFrame({'a': range(0, 10000), 'b': range(10000, 20000)})
+for _ in tqdm.tqdm(range(10)):
+    C = []
+    A = time.time()
+    for i,r in t.iterrows():
+        C.append((r['a'], r['b']))
+    B.append({"method": "iterrows", "time": time.time()-A})
 
-data_str = """
-{
-    "Message": true,
-    "Coincidences": [
-        {
-            "PADRON_ID": "IPH103",
-            "PF_FECHA_REGISTRO": "03/30/2021, 11:18:08",
-            "FOTO_ID": 63
-        }
-    ]
-} """
+    C = []
+    A = time.time()
+    for ir in t.itertuples():
+        C.append((ir[1], ir[2]))
+    B.append({"method": "itertuples", "time": time.time()-A})
 
-response = json.loads(data_str)
-debug(response)
+    C = []
+    A = time.time()
+    for r in zip(t['a'], t['b']):
+        C.append((r[0], r[1]))
+    B.append({"method": "zip", "time": time.time()-A})
 
+    C = []
+    A = time.time()
+    for r in zip(*t.to_dict("list").values()):
+        C.append((r[0], r[1]))
+    B.append({"method": "zip + to_dict('list')", "time": time.time()-A})
 
-coincidences = response["Coincidences"]
+    C = []
+    A = time.time()
+    for r in t.to_dict("records"):
+        C.append((r["a"], r["b"]))
+    B.append({"method": "to_dict('records')", "time": time.time()-A})
 
-def get_info_by_id(cursor, table_name, id_column, id_):
-    query = """
-        SELECT *
-        FROM %s
-        WHERE %s = :%s
-    """ % (table_name, id_column, id_column)
-    cursor.execute(query, **{id_column: id_})
-    col_names = [row[0] for row in cursor.description]
-    return {k: v.strftime("%m/%d/%Y, %H:%M:%S") if isinstance(v, datetime) else v for k, v in \
-        dict(zip(col_names, cursor.fetchone())).items() if not isinstance(v, LOB)}
+    A = time.time()
+    t.agg(tuple, axis=1).tolist()
+    B.append({"method": "agg", "time": time.time()-A})
 
-out = []
-try:
-    connection = pool.get_connection()
-    cursor = connection.cursor()
-    for coincidence in coincidences:
-        prefix = sub(r"\d", "", coincidence['PADRON_ID'])
-        table_name = table_names[prefix]
-        out.append(get_info_by_id(cursor, table_name, f"{prefix}_ID", coincidence['PADRON_ID']))
-finally:
-    pool.release_connection(connection)
+    A = time.time()
+    t.apply(tuple, axis=1).tolist()
+    B.append({"method": "apply", "time": time.time()-A})
 
-# pprint(response)
+print(f'Python {sys.version} on {sys.platform}')
+print(f"Pandas version {pd.__version__}")
+print(
+    pd.DataFrame(B).groupby("method").agg(["mean", "std"]).xs("time", axis=1).sort_values("mean")
+)

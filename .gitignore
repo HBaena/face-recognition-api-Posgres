@@ -11,3 +11,4 @@ client.py
 license.key
 *.log
 connection.*
+*test*
