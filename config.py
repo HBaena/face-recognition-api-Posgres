@@ -4,13 +4,14 @@ from flask_restful import Api  # modules for fast creation of apis
 from os import getcwd, environ, path
 import psycopg2 as psy  # Adding postgrest db handler
 from arlp import NumberPlateDetector
-from DB import OraclePoolConnections
+from DB import PosgresPoolConnection
 
 EXECUTION_PATH = getcwd()  # Execution path
 
 
 def connect_to_db():
-    return OraclePoolConnections(path.join(EXECUTION_PATH, "connection.yaml"))
+    # return OraclePoolConnections(path.join(EXECUTION_PATH, "connection.yaml"))
+    return PosgresPoolConnection(path.join(EXECUTION_PATH, "connection.json"))
 
 
 def create_numberplate_detector():

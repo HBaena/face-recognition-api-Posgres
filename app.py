@@ -22,7 +22,7 @@ loop = asyncio.new_event_loop()  # Create thread
 asyncio.set_event_loop(loop)  # Set the created thread as asyncio thread
 
 
-def refresh_templates():
+def refresh_templates() :
     from functions import get_templates
     try:
         connection = pool.get_connection()  # Stablish connection
@@ -128,44 +128,6 @@ class MirosCNFaceRecognition(Resource):
                         Error='Any face was found',
                         log=str(e)
                     )
-
-                    # else:
-                    """
-                        try:
-                            np_detector = create_numberplate_detector()
-                            np_detector.country = 'au'
-                            np_detector.set_default_region('au')
-                            results = np_detector.recognize_array(image)
-                            results = list(np_detector.decode(results))
-                            data = dict()
-                            for candidate, confidence in results:
-                                get_info_by_platenumber(cursor, candidate)
-                                info = cursor.fetchone()
-                                if info:
-                                    info = decode_platenumber_info(info)
-                                    data[info['ID_MATRICULA']] = info
-                            if data:
-                                return dict(
-                                    Message=True,
-                                    Coincidences=list(data.values())
-                                )
-                            else:
-                                return dict(
-                                    Message=False,
-                                    Error='No coincidences',
-                                )
-                        except Exception as e:
-                            return dict(
-                                Message=False,
-                                Error='An error occurred',
-                                log=str(e)
-                            )
-                except Exception as img_e:
-                    return dict(
-                        Message=False,
-                        Error='The received file is not a jpg/jpeg image',
-                        log=str(img_e))
-            """
             elif video:
                 try:
                     import time
@@ -210,16 +172,20 @@ class MirosCNFaceRecognition(Resource):
         :return: Json containing status=bool, Error/Message=str, log=Exception, array=numpy.array
         """
         from pprint import pprint
+        from psycopg2 import Binary
+        from datetime import datetime
+        from icecream import ic
         global pool
-        scheme = "D911_PADRONES" 
+        scheme = "PADRONES" 
         table_names = dict(
-            IPH=f"{scheme}.PADRON_IPH",
-            PSP=f"{scheme}.PADRON_SEG_PUBLICA",
-            SP=f"{scheme}.PADRON_SERVIDOR_PUBLICO"
+            IPH=f'{scheme}."PADRON_IPH"',
+            PSP=f'{scheme}."PADRON_SEG_PUBLICA"',
+            SP=f'{scheme}."PADRON_SERVIDOR_PUBLICO"'
             )
 
         form = dict(request.form)
         files = dict(request.files)
+
 
         try:
             files = {k: file.read() for k, file in files.items()}
@@ -231,17 +197,18 @@ class MirosCNFaceRecognition(Resource):
         table_id = f'{prefix}_ID'
         padron_fotos = dict()
         padron_fotos["PF_FOTO"] = files.pop("PF_FOTO")
+        # padron_fotos["PF_FECHA_REGISTRO"] = datetime.now()
         padron_fotos["PADRON_ID"] = None
-        padron_fotos["TABLE_NAME"] = f"{scheme}.PADRON_FOTOS" 
-        padron_fotos["TABLE_ID"] = "FOTO_ID"
+        padron_fotos["TABLE_NAME"] = f'{scheme}."PADRON_FOTOS"' 
+        padron_fotos["TABLE_ID"] = 'FOTO_ID'
 
         padron = {**files, **form}
+        coord_column = padron.get('COORD_COLUMN', False)
+        if coord_column:
+            del padron['COORD_COLUMN']
         padron[f"{prefix}_FOTO"] = padron_fotos["PF_FOTO"]
         padron["TABLE_NAME"] = table_name 
         padron["TABLE_ID"] = table_id
-        # pprint(padron_fotos)
-        # pprint(padron)
-        # return dict(Message=False)
 
 
         try:
@@ -258,11 +225,14 @@ class MirosCNFaceRecognition(Resource):
         try:
             try:
                 connection = pool.get_connection()
+                connection.autocommit = False
                 cursor = connection.cursor()
-                padron_fotos["PADRON_ID"] = insert_into(cursor, **padron)
+                ic(coord_column)
+                padron_fotos["PADRON_ID"] = insert_into(cursor, coord_column, **padron)
+                ic()
                 # connection.commit()
                 idx = insert_into(cursor, **padron_fotos)
-                connection.commit()  # Making changes to db
+                # connection.commit()  # Making changes to db
             except Exception as e:
                 # delete_register(cursor, **padron)
                 # pool.release_connection(connection)

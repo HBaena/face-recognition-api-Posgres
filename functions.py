@@ -5,11 +5,11 @@ from cx_Oracle import LOB
 from datetime import datetime
 from re import sub
 
-scheme = "D911_PADRONES"
+db_scheme = "padrones"
 table_names = dict(
-    IPH=f"{scheme}.PADRON_IPH",
-    PSP=f"{scheme}.PADRON_SEG_PUBLICA",
-    SP=f"{scheme}.PADRON_SERVIDOR_PUBLICO"
+    IPH=f"{db_scheme}.padron_iph",
+    PSP=f"{db_scheme}.padron_seg_publica",
+    SP=f"{db_scheme}.padron_servidor_publico"
     )
 
 FACIAL_RECOGNITION_TABLE = ''
@@ -173,12 +173,18 @@ def get_antecedentes(cursor, id_recon_facial):
 # ------------------------------------------------------------------
 
 def get_templates(cursor):
+    from icecream import ic
     try:
-        cursor.execute("""
-            SELECT FOTO_ID, PADRON_ID, PF_FECHA_REGISTRO, PF_PATRON_RECON
-            FROM D911_PADRONES.PADRON_FOTOS
-            ORDER BY PF_FECHA_REGISTRO DESC
-            """)
+                # "FOTO_ID", "PADRON_ID", "PF_FECHA_REGISTRO", "PF_PATRON_RECON"
+        query = """
+            SELECT              
+                "FOTO_ID", "PADRON_ID", "PF_FECHA_REGISTRO", "PF_PATRON_RECON"
+            FROM                               
+                padrones."PADRON_FOTOS"
+            ORDER BY "PF_FECHA_REGISTRO" DESC
+        """
+        # ic(str(query))
+        cursor.execute(query)
         return cursor.fetchall()
     except Exception as e:
         print(str(e))
@@ -202,29 +208,52 @@ def delete_register(cursor, **kwargs):
     finally:
         return
 
-def insert_into(cursor, **kwargs):
+def insert_into(cursor, coord_column=False,  **kwargs):
+    from psycopg2 import sql
+    from icecream import ic
     table_name = kwargs.pop("TABLE_NAME")
     table_id = kwargs.pop("TABLE_ID")
-    idx = cursor.var(str)
     query = """
-        INSERT INTO %s (
-            %s
-        )
-        VALUES (
-            %s
-        )
+            INSERT INTO %s ( {} %s )
+            VALUES ( {} %s )
+        
+            RETURNING "%s"
+            """
+    if coord_column:
+        coord = kwargs.pop(coord_column)
+        ic(coord.split())
+        str_tmp = (
+            f'"{coord_column}",',
+            "ST_GeomFromText('POINT(%s %s)', 4326), " % tuple(coord.split())
+            )
+    else:
+         str_tmp = ('', '')
+    query = query.format(*str_tmp)
 
-        RETURNING %s INTO :idx
-    """ % (
-            table_name, 
-            ', '.join(kwargs.keys()), 
-            ', '.join(map(lambda key: f":{key}", kwargs.keys())),
+    query = query % (
+            table_name,
+            ', '.join(map(lambda key: f'"{key}"', kwargs.keys())),  # values prototipe
+            ', '.join(map(lambda key: f"%({key})s", kwargs.keys())),  # values prototipe
             table_id
-        )
+            )
     print(query)
-    cursor.execute(query, idx=idx, **kwargs)
+    cursor.execute(sql.SQL(query), kwargs)
 
-    return idx.getvalue()[0]
+    return cursor.fetchone()[0]
+
+def update_coord(cursor, table_name, id_column, 
+            idx, coords_column,coords):
+    from psycopg2 import sql
+    query = sql.SQL("""
+            UPDATE {} 
+            SET {} = ST_GeomFromText('POINT(%s %s)', 4326)
+            WHERE {} = %s
+        """).format(
+        sql.Identifier(table_name),
+        sql.Identifier(coords_column),
+        sql.Identifier(id_column),
+        )
+    cursor.execute(query, (*coords.split(', '), idx))
 
 def get_info_by_id(cursor, table_name, id_column, id_):
     from icecream import ic
@@ -233,7 +262,6 @@ def get_info_by_id(cursor, table_name, id_column, id_):
         FROM %s
         WHERE %s = :%s
     """ % (table_name, id_column, id_column)
-    ic(query)
     cursor.execute(query, **{id_column: id_})
     col_names = [row[0] for row in cursor.description]
     return {k: v.strftime("%m/%d/%Y, %H:%M:%S") if isinstance(v, datetime) else v for k, v in \
