@@ -7,7 +7,13 @@ from arlp import NumberPlateDetector
 from DB import PosgresPoolConnection
 
 EXECUTION_PATH = getcwd()  # Execution path
-
+COMMIT_MODE = False
+db_scheme = "padrones"
+TABLE_NAMES = dict(
+    IPH=f"{db_scheme}.padron_iph",
+    PSP=f"{db_scheme}.padron_seg_publica",
+    SP=f"{db_scheme}.padron_servidor_publico"
+    )
 
 def connect_to_db():
     # return OraclePoolConnections(path.join(EXECUTION_PATH, "connection.yaml"))

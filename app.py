@@ -5,14 +5,11 @@ from flask import request  # Flask, receiving data from requests, json handling
 from flask_restful import Resource  # modules for fast creation of apis
 from config import app, api, license_key, connect_to_db, create_numberplate_detector, EXECUTION_PATH
 from luxand import init, image_from_jpg, get_face_template, image_face_recognition, VideoFaceRecognition
-from functions import ctype_to_numpy, get_templates, sort_dict, get_info_by_platenumber, decode_platenumber_info, \
-    transforming_response, insert_into, delete_register
+from functions import ctype_to_numpy, transforming_response, array_from_bytes, ctype_from_bytes
+
+from model import get_templates, insert_into, delete_register
 from icecream import ic as debug
-# from apscheduler.schedulers.background import BackgroundScheduler
-
-# from PIL import Image  # module for image handling
-# import pickle
-
+from config import COMMIT_MODE
 
 threshold = 0.92  # Needs a 92% of similarity to match
 pool = None
@@ -23,7 +20,7 @@ asyncio.set_event_loop(loop)  # Set the created thread as asyncio thread
 
 
 def refresh_templates() :
-    from functions import get_templates
+    from model import get_templates
     try:
         connection = pool.get_connection()  # Stablish connection
         cursor = connection.cursor()  # Get cursor connection
@@ -225,7 +222,7 @@ class MirosCNFaceRecognition(Resource):
         try:
             try:
                 connection = pool.get_connection()
-                connection.autocommit = False
+                connection.autocommit = COMMIT_MODE
                 cursor = connection.cursor()
                 ic(coord_column)
                 padron_fotos["PADRON_ID"] = insert_into(cursor, coord_column, **padron)
@@ -245,7 +242,6 @@ class MirosCNFaceRecognition(Resource):
 
     def get(self):
         from pprint import pprint
-        from functions import array_from_bytes, ctype_from_bytes
         try:
             connection = pool.get_connection()
             cursor = connection.cursor()
