@@ -101,14 +101,13 @@ def image_face_recognition(img, templates, cursor, threshold: float) -> dict:
         #     print(str(e))
     if not current_templates:  # If no faces are found, return an error
         return dict(Message=False, Error='Any face was found')
-
     coincidences = dict()  # Coincidences with more tha threshold% of similarity
     i = 0
     for item in templates:
         i += 1
         # id_hist, id_, curp, report, name, type_, template_db, date_ = item  # HRF_RF_ID, HRF_TIPO_CIU, MRF_PATRON_F
         id_hist, id_, date_, template_db = item 
-        template_db = ctype_from_bytes(template_db)  # Create an array from bytes and then convert into ctype
+        template_db = ctype_from_bytes(template_db.hex())  # Create an array from bytes and then convert into ctype
         # if id_ in coincidences:
         #     continue
         for template in current_templates:

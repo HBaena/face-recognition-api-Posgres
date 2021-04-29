@@ -3,13 +3,16 @@ import os
 
 from flask import request  # Flask, receiving data from requests, json handling
 from flask_restful import Resource  # modules for fast creation of apis
-from config import app, api, license_key, connect_to_db, create_numberplate_detector, EXECUTION_PATH
+from config import app, api, license_key, connect_to_db, EXECUTION_PATH, TABLE_NAMES, db_scheme
 from luxand import init, image_from_jpg, get_face_template, image_face_recognition, VideoFaceRecognition
-from functions import ctype_to_numpy, transforming_response, array_from_bytes, ctype_from_bytes
-
-from model import get_templates, insert_into, delete_register
+from functions import ctype_to_numpy, sort_dict, transforming_response
+from model import insert_into, delete_register, get_templates
 from icecream import ic as debug
-from config import COMMIT_MODE
+# from apscheduler.schedulers.background import BackgroundScheduler
+
+# from PIL import Image  # module for image handling
+# import pickle
+
 
 threshold = 0.92  # Needs a 92% of similarity to match
 pool = None
@@ -102,9 +105,10 @@ class MirosCNFaceRecognition(Resource):
                         templates = get_templates(cursor)
                         response = image_face_recognition(img, templates, cursor, threshold)  # It Does FR from image
                         if not response['Error']:
+                            ic()
                             response['Coincidences'] = list(response['Coincidences'].values())
+                            ic()
                             coincidences = response["Coincidences"]
-                            ic(response["Coincidences"])
                             response["Coincidences"] = transforming_response(coincidences, cursor)
                             response["Status"] = table_names[sub( r'\d','' ,list(response["Coincidences"][0].values())[0])]
                             return response
@@ -146,7 +150,6 @@ class MirosCNFaceRecognition(Resource):
                         # response = image_face_recognition(img, templates, cursor, threshold)  # It Does FR from image
                         video_fr.load_video(tempfile)  # load temporary video file
                         response = loop.run_until_complete(video_fr.process(threshold, mode))  # Run video FR asynchronously
-
                         coincidences = response["Coincidences"]
                         response["Coincidences"] = transforming_response(coincidences, cursor)
                         try:
@@ -173,12 +176,7 @@ class MirosCNFaceRecognition(Resource):
         from datetime import datetime
         from icecream import ic
         global pool
-        scheme = "PADRONES" 
-        table_names = dict(
-            IPH=f'{scheme}."PADRON_IPH"',
-            PSP=f'{scheme}."PADRON_SEG_PUBLICA"',
-            SP=f'{scheme}."PADRON_SERVIDOR_PUBLICO"'
-            )
+
 
         form = dict(request.form)
         files = dict(request.files)
@@ -190,13 +188,13 @@ class MirosCNFaceRecognition(Resource):
             return dict(Message=False, Error="Problems while reading files", log=str(e))
 
         prefix = form.pop("TABLE")
-        table_name = table_names[prefix]
+        table_name = TABLE_NAMES[prefix]
         table_id = f'{prefix}_ID'
         padron_fotos = dict()
         padron_fotos["PF_FOTO"] = files.pop("PF_FOTO")
         # padron_fotos["PF_FECHA_REGISTRO"] = datetime.now()
         padron_fotos["PADRON_ID"] = None
-        padron_fotos["TABLE_NAME"] = f'{scheme}."PADRON_FOTOS"' 
+        padron_fotos["TABLE_NAME"] = f'{db_scheme}."PADRON_FOTOS"' 
         padron_fotos["TABLE_ID"] = 'FOTO_ID'
 
         padron = {**files, **form}
@@ -222,11 +220,9 @@ class MirosCNFaceRecognition(Resource):
         try:
             try:
                 connection = pool.get_connection()
-                connection.autocommit = COMMIT_MODE
+                connection.autocommit = False
                 cursor = connection.cursor()
-                ic(coord_column)
                 padron_fotos["PADRON_ID"] = insert_into(cursor, coord_column, **padron)
-                ic()
                 # connection.commit()
                 idx = insert_into(cursor, **padron_fotos)
                 # connection.commit()  # Making changes to db
@@ -242,6 +238,7 @@ class MirosCNFaceRecognition(Resource):
 
     def get(self):
         from pprint import pprint
+        from functions import array_from_bytes, ctype_from_bytes
         try:
             connection = pool.get_connection()
             cursor = connection.cursor()

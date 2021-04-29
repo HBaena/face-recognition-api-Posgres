@@ -4,21 +4,22 @@ from fsdk.flat import FaceTemplate
 from cx_Oracle import LOB
 from datetime import datetime
 from re import sub
-
+from config import TABLE_NAMES
+from model import get_info_by_id
 
 # FaceTemplate = c_char*const.FSDK_FACE_TEMPLATE_SIZE
 
 def ctype_to_numpy(ctype_a): return np.frombuffer(ctype_a)
 
 
-def ctype_from_bytes(bytes):
+def ctype_from_bytes(bytes_):
     array = FaceTemplate()
-    array.raw = array.raw.fromhex(bytes.read().hex())
+    array.raw = array.raw.fromhex(bytes_)
     return array
 
 
-def array_from_bytes(bytes):
-    return np.frombuffer(bytes)
+def array_from_bytes(bytes_):
+    return np.frombuffer(bytes_)
 
 
 def get_info_by_template_id(cursor, id_: int) -> dict:
@@ -113,23 +114,11 @@ def update_coord(cursor, table_name, id_column,
         )
     cursor.execute(query, (*coords.split(', '), idx))
 
-def get_info_by_id(cursor, table_name, id_column, id_):
-    from icecream import ic
-    query = """
-        SELECT *
-        FROM %s
-        WHERE %s = :%s
-    """ % (table_name, id_column, id_column)
-    cursor.execute(query, **{id_column: id_})
-    col_names = [row[0] for row in cursor.description]
-    return {k: v.strftime("%m/%d/%Y, %H:%M:%S") if isinstance(v, datetime) else v for k, v in \
-        dict(zip(col_names, cursor.fetchone())).items() if not isinstance(v, LOB)}
-
 
 def transforming_response(coincidences, cursor):
     out = []
     for coincidence in coincidences:
         prefix = sub(r"\d", "", coincidence['PADRON_ID'])
-        table_name = table_names[prefix]
+        table_name = TABLE_NAMES[prefix]
         out.append(get_info_by_id(cursor, table_name, f"{prefix}_ID", coincidence['PADRON_ID']))
     return out
