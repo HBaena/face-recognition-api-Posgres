@@ -3,7 +3,7 @@ import os
 
 from flask import request  # Flask, receiving data from requests, json handling
 from flask_restful import Resource  # modules for fast creation of apis
-from config import app, api, license_key, connect_to_db, EXECUTION_PATH, TABLE_NAMES, db_scheme
+from config import app, api, license_key, connect_to_db, EXECUTION_PATH, TABLE_NAMES, db_scheme, COMMIT_MODE
 from luxand import init, image_from_jpg, get_face_template, image_face_recognition, VideoFaceRecognition
 from functions import ctype_to_numpy, sort_dict, transforming_response
 from model import insert_into, delete_register, get_templates
@@ -220,7 +220,7 @@ class MirosCNFaceRecognition(Resource):
         try:
             try:
                 connection = pool.get_connection()
-                connection.autocommit = True  # 
+                connection.autocommit = COMMIT_MODE  # 
                 cursor = connection.cursor()
                 padron_fotos["PADRON_ID"] = insert_into(cursor, coord_column, **padron)
                 # connection.commit()
