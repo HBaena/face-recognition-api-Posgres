@@ -220,7 +220,7 @@ class MirosCNFaceRecognition(Resource):
         try:
             try:
                 connection = pool.get_connection()
-                connection.autocommit = False
+                connection.autocommit = True  # 
                 cursor = connection.cursor()
                 padron_fotos["PADRON_ID"] = insert_into(cursor, coord_column, **padron)
                 # connection.commit()

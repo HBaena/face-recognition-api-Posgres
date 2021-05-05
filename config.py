@@ -1,13 +1,13 @@
 from flask import Flask
 from flask_restful import Api  # modules for fast creation of apis
 # from flask_sqlalchemy import SQLAlchemy
-from os import getcwd, environ, path
+from os import getcwd, getenv, path
 import psycopg2 as psy  # Adding postgrest db handler
 from arlp import NumberPlateDetector
 from DB import PosgresPoolConnection
 
 EXECUTION_PATH = getcwd()  # Execution path
-COMMIT_MODE = True
+COMMIT_MODE = getenv('COMMIT_FR_MODE', True)
 db_scheme = "padrones"
 TABLE_NAMES = dict(
     IPH=f'{db_scheme}."PADRON_IPH"',
@@ -18,13 +18,6 @@ TABLE_NAMES = dict(
 def connect_to_db():
     # return OraclePoolConnections(path.join(EXECUTION_PATH, "connection.yaml"))
     return PosgresPoolConnection(path.join(EXECUTION_PATH, "connection.json"))
-
-
-def create_numberplate_detector():
-    runtime_data = path.join(EXECUTION_PATH, "openalpr/runtime_data")
-    config = path.join(EXECUTION_PATH, "openalpr/config/openalpr.conf")
-    country = "au"
-    return NumberPlateDetector(country, config, runtime_data)
 
 
 license_key = path.join(EXECUTION_PATH, 'license.key')  # read the licence.key from current dir
