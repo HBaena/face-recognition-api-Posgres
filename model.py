@@ -1,5 +1,6 @@
 from icecream import ic
 from config import TABLE_NAMES, db_scheme
+from re import compile as re_compile
 
 def get_templates(cursor):
     try:
@@ -72,6 +73,11 @@ def get_info_by_id(cursor, table_name, id_column, id_):
     from psycopg2 import sql
     from datetime import datetime
     from shapely import wkb
+    import re
+    pattern = r'^.*_'
+    prefix_del_pattern = re.compile(pattern)
+    prefix_del = lambda col: prefix_del_pattern.sub('', col)
+
     query = """
             SELECT *
             FROM {}
@@ -79,7 +85,7 @@ def get_info_by_id(cursor, table_name, id_column, id_):
         """.format(table_name, id_column)
     cursor.execute(query, (id_, ))
 
-    col_names = [row[0] for row in cursor.description]
+    col_names = [prefix_del(row[0]) for row in cursor.description]
     response =  {k: v.strftime("%m/%d/%Y, %H:%M:%S") if isinstance(v, datetime) else  \
     (lambda coords: (coords.x, coords.y))(wkb.loads(v, hex=True))  if k.upper().count("COORD") else \
     # wkb.loads(v, hex=True).xy  if k.upper().count("COORD") else \
