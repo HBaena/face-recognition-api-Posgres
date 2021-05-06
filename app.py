@@ -105,11 +105,13 @@ class MirosCNFaceRecognition(Resource):
                 try:
                     image = image.read()
                     img = image_from_jpg(image)  # convert binary image into fsdk image
+                    ic()
                     try:
                         connection = pool.get_connection()  # Stablish connection
                         cursor = connection.cursor()  # Get cursor connection 
                         templates = get_templates(cursor)
                         response = image_face_recognition(img, templates, cursor, threshold)  # It Does FR from image
+                        ic(response)
                         if not response['Error']:
                             ic()
                             response['Coincidences'] = list(response['Coincidences'].values())
@@ -118,6 +120,11 @@ class MirosCNFaceRecognition(Resource):
                             response["Coincidences"] = transforming_response(coincidences, cursor)
                             response["Status"] = table_names[sub( r'\d','' ,list(response["Coincidences"][0].values())[0])]
                             return response
+                        elif response['Error'] == 'Any face was found':
+                            return dict(
+                                Message=False,
+                                Error='Any face was found',
+                            )
                         else:
                             return dict(
                                 Message=False,
@@ -132,7 +139,7 @@ class MirosCNFaceRecognition(Resource):
                 except Exception as e:                    
                     return dict(
                         Message=False,
-                        Error='Any face was found',
+                        Error='Image format not supported',
                         log=str(e)
                     )
             elif video:
