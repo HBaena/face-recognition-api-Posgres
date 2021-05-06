@@ -8,6 +8,12 @@ from luxand import init, image_from_jpg, get_face_template, image_face_recogniti
 from functions import ctype_to_numpy, sort_dict, transforming_response
 from model import insert_into, delete_register, get_templates
 from icecream import ic as debug
+
+import logging
+
+logging.basicConfig(filename=os.path.join(EXECUTION_PATH, "app.log"), level=logging.ERROR)
+
+
 # from apscheduler.schedulers.background import BackgroundScheduler
 
 # from PIL import Image  # module for image handling
